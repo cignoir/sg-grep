@@ -996,7 +996,23 @@ function App() {
   const displayMode = activeQuery ? "search" : "browse";
 
   return (
-    <div className="h-full flex flex-col" style={{ backgroundColor: theme.bg, color: theme.text }}>
+    <div
+      className="h-full flex flex-col relative"
+      style={{
+        backgroundColor: theme.bg,
+        color: theme.text,
+        padding: "8px",
+      }}
+    >
+      {/* Window border overlay */}
+      <div
+        className="absolute inset-0 pointer-events-none z-[100]"
+        style={{
+          borderImage: "url(/border.png) 10 stretch",
+          borderWidth: "10px",
+          borderStyle: "solid",
+        }}
+      />
       {/* Menu bar */}
       <MenuBar
         theme={theme}
