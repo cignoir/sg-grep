@@ -12,6 +12,9 @@ jobs:
     permissions:
       contents: write
 
+    env:
+      RUSTC_WRAPPER: sccache
+
     steps:
       - uses: actions/checkout@v4
 
@@ -22,10 +25,19 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.7
+        env:
+          SCCACHE_GHA_ENABLED: "true"
+
+      - name: Restore Cargo registry cache
+        uses: actions/cache/restore@v4
         with:
-          workspaces: src-tauri -> target
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: cargo-registry-
 
       - name: Install dependencies
         run: npm ci
@@ -35,6 +47,10 @@ jobs:
 
       - name: Bundle Tauri app
         run: npx tauri build --no-sign
+
+      - name: Show sccache stats
+        if: always()
+        run: sccache --show-stats
 
       - name: Sign installer
         run: |
@@ -79,3 +95,12 @@ jobs:
             src-tauri/target/release/bundle/nsis/*.exe
             latest.json
           generate_release_notes: true
+
+      - name: Save Cargo registry cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-registry-${{ hashFiles('**/Cargo.lock') }}
