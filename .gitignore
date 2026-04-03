@@ -13,6 +13,9 @@ src-tauri/icons/
 # Runtime config (user-specific, created next to exe)
 config.json
 
+# Signing keys (NEVER commit private key)
+src-tauri/.tauri/
+
 # OS
 Thumbs.db
 .DS_Store

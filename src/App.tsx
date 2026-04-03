@@ -27,6 +27,7 @@ import {
 import Settings from "./Settings";
 import CustomScrollbar from "./CustomScrollbar";
 import { parseQuery, matchesQuery, buildHighlightRegex } from "./queryParser";
+import UpdateDialog, { useUpdateChecker } from "./UpdateDialog";
 
 // ─── Virtualized log pane ───
 
@@ -476,6 +477,7 @@ function MenuBar({
   onOpenSettings,
   onToggleSidebar,
   onShowAbout,
+  onCheckUpdate,
   sidebarVisible,
   inputRef,
   onInput,
@@ -486,6 +488,7 @@ function MenuBar({
   onOpenSettings: () => void;
   onToggleSidebar: () => void;
   onShowAbout: () => void;
+  onCheckUpdate: () => void;
   sidebarVisible: boolean;
   inputRef: React.RefObject<HTMLInputElement | null>;
   onInput: () => void;
@@ -530,6 +533,8 @@ function MenuBar({
     {
       label: "ヘルプ",
       items: [
+        { label: "アップデートを確認", onClick: () => { close(); onCheckUpdate(); } },
+        { label: "", onClick: () => {}, separator: true },
         { label: "About", onClick: () => { close(); onShowAbout(); } },
       ],
     },
@@ -737,6 +742,7 @@ function App() {
   const [configLoaded, setConfigLoaded] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
+  const updater = useUpdateChecker();
   const [sidebarVisible, setSidebarVisible] = useState(true);
 
   const rawScrollRef = useRef<HTMLDivElement>(null);
@@ -848,6 +854,14 @@ function App() {
         await loadDirectory(config.last_directory);
       }
       setConfigLoaded(true);
+      // Auto-check for updates on startup (silent, only show if available)
+      try {
+        const { check: checkUpdate } = await import("@tauri-apps/plugin-updater");
+        const update = await checkUpdate();
+        if (update) {
+          updater.setUpdateState({ status: "available", version: update.version, body: update.body ?? "" });
+        }
+      } catch (_) { /* Ignore update check errors on startup */ }
     })();
   }, []);
 
@@ -1019,6 +1033,7 @@ function App() {
         onOpenFolder={handlePickFolder}
         onOpenSettings={() => setShowSettings(true)}
         onShowAbout={() => setShowAbout(true)}
+        onCheckUpdate={updater.checkForUpdate}
         onToggleSidebar={() => setSidebarVisible((v) => !v)}
         sidebarVisible={sidebarVisible}
         inputRef={inputRef}
@@ -1255,6 +1270,17 @@ function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Update dialog */}
+      {updater.updateState && updater.updateState.status !== "none" && (
+        <UpdateDialog
+          state={updater.updateState}
+          theme={theme}
+          onClose={() => updater.setUpdateState(null)}
+          onDownload={updater.startDownload}
+          onRelaunch={updater.doRelaunch}
+        />
       )}
     </div>
   );
