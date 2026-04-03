@@ -32,14 +32,6 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "createUpdaterArtifacts": true
   },
-  "plugins": {
-    "updater": {
-      "endpoints": [
-        "https://github.com/cignoir/sg-grep/releases/latest/download/latest.json"
-      ],
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQ5NDY4MjA5MThCNzA1RkEKUldUNkJiY1lDWUpHU1dyTExSeUh5WXdZTHJGYkVGMjhkMUcycTRROUZPcWJiMW5lclNvUHlxcWUK"
-    }
-  }
+  "plugins": {}
 }
