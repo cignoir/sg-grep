@@ -761,22 +761,6 @@ function App() {
     return mergeContinuationLines(lines);
   }, [lines, mergeCont]);
 
-  const rawToFmtMap = useMemo(() => {
-    if (!mergedData) return null;
-    const map = new Map<number, number>();
-    mergedData.forEach((m, fmtIdx) => {
-      for (const rawIdx of m.originalIndices) map.set(rawIdx, fmtIdx);
-    });
-    return map;
-  }, [mergedData]);
-
-  const fmtToRawMap = useMemo(() => {
-    if (!mergedData) return null;
-    const map = new Map<number, number>();
-    mergedData.forEach((m, fmtIdx) => { map.set(fmtIdx, m.originalIndices[0]); });
-    return map;
-  }, [mergedData]);
-
   const formattedLines = useMemo(() => {
     let result = [...lines];
     if (mergedData) result = mergedData.map((m) => m.merged);
@@ -807,33 +791,19 @@ function App() {
     const fmtEl = formattedScrollRef.current;
     if (!rawEl || !fmtEl) return;
 
-    const LINE_HEIGHT = 20;
-
-    const onRawScroll = () => {
+    const syncFrom = (source: HTMLDivElement, target: HTMLDivElement) => () => {
       if (isSyncing.current) return;
       isSyncing.current = true;
-      if (rawToFmtMap) {
-        const rawLineIdx = Math.floor(rawEl.scrollTop / LINE_HEIGHT);
-        const fmtLineIdx = rawToFmtMap.get(rawLineIdx) ?? rawLineIdx;
-        fmtEl.scrollTop = fmtLineIdx * LINE_HEIGHT;
-      } else {
-        fmtEl.scrollTop = rawEl.scrollTop;
+      const maxS = source.scrollHeight - source.clientHeight;
+      const maxT = target.scrollHeight - target.clientHeight;
+      if (maxS > 0 && maxT > 0) {
+        target.scrollTop = (source.scrollTop / maxS) * maxT;
       }
       requestAnimationFrame(() => { isSyncing.current = false; });
     };
 
-    const onFmtScroll = () => {
-      if (isSyncing.current) return;
-      isSyncing.current = true;
-      if (fmtToRawMap) {
-        const fmtLineIdx = Math.floor(fmtEl.scrollTop / LINE_HEIGHT);
-        const rawLineIdx = fmtToRawMap.get(fmtLineIdx) ?? fmtLineIdx;
-        rawEl.scrollTop = rawLineIdx * LINE_HEIGHT;
-      } else {
-        rawEl.scrollTop = fmtEl.scrollTop;
-      }
-      requestAnimationFrame(() => { isSyncing.current = false; });
-    };
+    const onRawScroll = syncFrom(rawEl, fmtEl);
+    const onFmtScroll = syncFrom(fmtEl, rawEl);
 
     rawEl.addEventListener("scroll", onRawScroll);
     fmtEl.addEventListener("scroll", onFmtScroll);
@@ -841,7 +811,7 @@ function App() {
       rawEl.removeEventListener("scroll", onRawScroll);
       fmtEl.removeEventListener("scroll", onFmtScroll);
     };
-  }, [syncScroll, rawToFmtMap, fmtToRawMap]);
+  }, [syncScroll]);
 
   // Load config
   useEffect(() => {
