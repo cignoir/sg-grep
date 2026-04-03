@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Rust / Tauri
+src-tauri/target/
+
+# Generated icons (from app-icon.png)
+src-tauri/icons/
+
+# Runtime config (user-specific, created next to exe)
+config.json
+
+# OS
+Thumbs.db
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

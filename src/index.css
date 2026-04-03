@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  font-family: "Meiryo", "Yu Gothic", sans-serif;
+}
+
+/* Default scrollbar for sidebar etc. */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #666;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+/* Hide native scrollbar on log panes (custom scrollbar used instead) */
+.log-pane::-webkit-scrollbar {
+  width: 0;
+  display: none;
+}
+
+/* Selection styling - stays visible when window is inactive */
+::selection {
+  background-color: rgba(137, 180, 250, 0.3);
+  color: inherit;
+  text-shadow: none;
+}
+
+.highlight-flash {
+  animation: flash 1.5s ease-out;
+}
+@keyframes flash {
+  0% { outline: 2px solid rgba(250, 200, 50, 0.6); }
+  100% { outline: 2px solid transparent; }
+}
