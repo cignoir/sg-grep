@@ -165,41 +165,39 @@ pub fn read_file(path: String) -> Result<String, String> {
 
 // --- Extract all speaker names across all cached files ---
 
+// Chat lines: "HH:MM:SS  [PREFIX]Name: message" (half-width colon + space)
+static CHAT_RE: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::new(|| {
+    regex::Regex::new(r"^ {1,2}\d{2}:\d{2}:\d{2}  (?:\[(?:FROM|TO|PT|GL)\])?\s*(.+?): ").unwrap()
+});
+
+// System lines: "HH:MM:SS  Name PARTICLE ..."
+static SYS_RE: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::new(|| {
+    regex::Regex::new(
+        r"^ {1,2}\d{2}:\d{2}:\d{2}  (.+?) (?:が|は|の|を|と|から|に|とトレード|からの|にメール)",
+    )
+    .unwrap()
+});
+
 #[tauri::command]
 pub fn collect_all_names() -> Vec<String> {
     let cache = FILE_CACHE.lock().unwrap();
-
-    // Chat lines: "HH:MM:SS  [PREFIX]Name: message" (half-width colon + space)
-    let chat_re = regex::Regex::new(
-        r"^ {1,2}\d{2}:\d{2}:\d{2}  (?:\[(?:FROM|TO|PT|GL)\])?\s*(.+?): "
-    ).unwrap();
-
-    // System lines: "HH:MM:SS  Name PARTICLE ..."
-    // Extract name before common particles that follow player names
-    let sys_re = regex::Regex::new(
-        r"^ {1,2}\d{2}:\d{2}:\d{2}  (.+?) (?:が|は|の|を|と|から|に|とトレード|からの|にメール)"
-    ).unwrap();
-
     let mut seen_set = std::collections::HashSet::new();
     let mut names = Vec::new();
 
     for file in cache.iter() {
         for line in &file.lines {
             // Try chat pattern first
-            if let Some(caps) = chat_re.captures(line) {
+            if let Some(caps) = CHAT_RE.captures(line) {
                 let name = caps[1].trim().to_string();
                 if !name.is_empty() && seen_set.insert(name.clone()) {
                     names.push(name);
                 }
                 continue;
             }
-            // Try system pattern (no colon = not a chat line)
-            if !line.contains(':') || line.matches(':').count() == 1 {
-                // Only match lines with timestamp (1 colon in timestamp)
-            }
-            if let Some(caps) = sys_re.captures(line) {
+            // Try system pattern
+            if let Some(caps) = SYS_RE.captures(line) {
                 let name = caps[1].trim().to_string();
-                // Skip names that look like items/skills (contain common item/skill words)
+                // Skip names that look like items/skills
                 if !name.is_empty()
                     && !name.contains("経験値")
                     && !name.contains("アイテム")
@@ -338,8 +336,7 @@ fn build_excerpt(line: &str, query_lower: &str, max_len: usize) -> String {
 }
 
 #[tauri::command]
-pub fn search_files(dir: String, query: String) -> Result<Vec<FileSearchResult>, String> {
-    let _ = dir;
+pub fn search_files(query: String) -> Result<Vec<FileSearchResult>, String> {
     if query.is_empty() {
         return Ok(vec![]);
     }

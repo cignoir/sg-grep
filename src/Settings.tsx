@@ -2,6 +2,7 @@ import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import type { AppConfig, ThemeConfig } from "./types";
+import Modal from "./Modal";
 
 export default function Settings({
   theme,
@@ -30,51 +31,13 @@ export default function Settings({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div
-        className="rounded-lg shadow-2xl w-[480px] flex flex-col"
-        style={{ backgroundColor: theme.bgSecondary, color: theme.text, border: `1px solid ${theme.border}` }}
-      >
-        {/* Header */}
-        <div
-          className="flex items-center justify-between px-4 py-3 shrink-0"
-          style={{ borderBottom: `1px solid ${theme.border}` }}
-        >
-          <span className="font-bold text-sm">設定</span>
-          <button onClick={onClose} className="text-lg hover:opacity-60 leading-none" style={{ color: theme.textDimmed }}>×</button>
-        </div>
-
-        {/* Body */}
-        <div className="px-4 py-4">
-          <label className="text-xs font-bold block mb-1" style={{ color: theme.textMuted }}>ログフォルダ</label>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={dir}
-              onChange={(e) => setDir(e.target.value)}
-              className="flex-1 px-3 py-1.5 text-sm rounded focus:outline-none"
-              style={{ backgroundColor: theme.bgTertiary, border: `1px solid ${theme.border}`, color: theme.text }}
-              placeholder="フォルダパスを入力..."
-            />
-            <button
-              onClick={handlePickDir}
-              className="px-3 py-1.5 text-sm rounded hover:opacity-80"
-              style={{ backgroundColor: theme.bgTertiary, color: theme.text }}
-            >
-              参照
-            </button>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div
-          className="flex justify-end gap-2 px-4 py-3 shrink-0"
-          style={{ borderTop: `1px solid ${theme.border}` }}
-        >
+    <Modal
+      theme={theme}
+      width="480px"
+      title="設定"
+      onClose={onClose}
+      footer={
+        <>
           <button
             onClick={onClose}
             className="px-4 py-1.5 text-sm rounded hover:opacity-80"
@@ -89,8 +52,29 @@ export default function Settings({
           >
             保存
           </button>
+        </>
+      }
+    >
+      <div className="px-4 py-4">
+        <label className="text-xs font-bold block mb-1" style={{ color: theme.textMuted }}>ログフォルダ</label>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={dir}
+            onChange={(e) => setDir(e.target.value)}
+            className="flex-1 px-3 py-1.5 text-sm rounded focus:outline-none"
+            style={{ backgroundColor: theme.bgTertiary, border: `1px solid ${theme.border}`, color: theme.text }}
+            placeholder="フォルダパスを入力..."
+          />
+          <button
+            onClick={handlePickDir}
+            className="px-3 py-1.5 text-sm rounded hover:opacity-80"
+            style={{ backgroundColor: theme.bgTertiary, color: theme.text }}
+          >
+            参照
+          </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
