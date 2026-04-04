@@ -75,7 +75,7 @@ export const DEFAULT_THEME: ThemeConfig = {
   text: "#ffffff",
   textMuted: "#ffffff",
   textDimmed: "#ffffff",
-  accent: "#3cf2f0",
+  accent: "#79D6C7",
   accentHover: "#74c7ec",
   selected: "#a47f4c",
   selectedText: "#f9e2af",

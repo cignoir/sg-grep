@@ -27,6 +27,7 @@ import {
 import Settings from "./Settings";
 import CustomScrollbar from "./CustomScrollbar";
 import { parseQuery, matchesQuery, buildHighlightRegex } from "./queryParser";
+import { version as appVersion } from "../package.json";
 
 // ─── Virtualized log pane ───
 
@@ -814,10 +815,10 @@ function App() {
       if (config.theme && typeof config.theme === "object") {
         setThemeOverrides(config.theme as Partial<ThemeConfig>);
       }
-      if (config.last_directory) {
-        await loadDirectory(config.last_directory);
-      }
       setConfigLoaded(true);
+      if (config.last_directory) {
+        loadDirectory(config.last_directory);
+      }
     })();
   }, []);
 
@@ -1023,7 +1024,7 @@ function App() {
               <button
                 onClick={handlePickFolder}
                 className="px-6 py-3 rounded-lg transition-colors font-bold hover:opacity-90"
-                style={{ backgroundColor: theme.accent, color: theme.bg }}
+                style={{ backgroundColor: theme.accent, color: "#ffffff", textShadow: "1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000" }}
               >
                 フォルダを開く
               </button>
@@ -1224,7 +1225,7 @@ function App() {
             </div>
             <div className="px-6 py-6 text-center">
               <p className="text-lg font-bold mb-2">SG grep</p>
-              <p className="text-xs mb-1" style={{ color: theme.textMuted }}>Version 0.1.0</p>
+              <p className="text-xs mb-1" style={{ color: theme.textMuted }}>Version {appVersion}</p>
               <p className="text-xs mt-3" style={{ color: theme.textDimmed }}>STRUGARDEN チャットログビューア</p>
             </div>
             <div
@@ -1234,7 +1235,7 @@ function App() {
               <button
                 onClick={() => setShowAbout(false)}
                 className="px-6 py-1.5 text-sm rounded hover:opacity-90 font-bold"
-                style={{ backgroundColor: theme.accent, color: theme.bg }}
+                style={{ backgroundColor: theme.accent, color: "#ffffff", textShadow: "1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000" }}
               >
                 OK
               </button>

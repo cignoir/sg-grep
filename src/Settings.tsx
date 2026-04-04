@@ -85,7 +85,7 @@ export default function Settings({
           <button
             onClick={handleSave}
             className="px-4 py-1.5 text-sm rounded hover:opacity-90 font-bold"
-            style={{ backgroundColor: theme.accent, color: theme.bg }}
+            style={{ backgroundColor: theme.accent, color: "#ffffff", textShadow: "1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000" }}
           >
             保存
           </button>
