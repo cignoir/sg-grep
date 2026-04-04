@@ -10,6 +10,7 @@ import {
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type {
   AppConfig,
@@ -732,6 +733,7 @@ function App() {
   const [themeOverrides, setThemeOverrides] = useState<Partial<ThemeConfig>>({});
   const [mergeCont, setMergeCont] = useState(true);
   const [anonymize, setAnonymize] = useState(false);
+  const [anonymizeLoading, setAnonymizeLoading] = useState(false);
   const [allNames, setAllNames] = useState<string[]>([]);
   const [syncScroll, setSyncScroll] = useState(true);
   const [filterText, setFilterText] = useState("");
@@ -816,10 +818,10 @@ function App() {
         setThemeOverrides(config.theme as Partial<ThemeConfig>);
       }
       setConfigLoaded(true);
-      // Show window after UI is ready
-      getCurrentWindow().show();
       if (config.last_directory) {
         loadDirectory(config.last_directory);
+      } else {
+        closeSplashAndShowMain();
       }
     })();
   }, []);
@@ -876,6 +878,16 @@ function App() {
     return () => window.removeEventListener("keydown", handler);
   }, [allHits, selectedHitKey]);
 
+  const closeSplashAndShowMain = () => {
+    getCurrentWindow().show();
+    setTimeout(async () => {
+      try {
+        const splash = await WebviewWindow.getByLabel("splash");
+        if (splash) await splash.close();
+      } catch (_) {}
+    }, 1000);
+  };
+
   const loadDirectory = async (dir: string) => {
     try {
       const groups: FolderGroup[] = await invoke("scan_directory", { dir });
@@ -888,6 +900,7 @@ function App() {
     } catch (e) {
       console.error(e);
     }
+    closeSplashAndShowMain();
   };
 
   const handlePickFolder = async () => {
@@ -973,10 +986,14 @@ function App() {
   }, []);
 
   const handleToggleAnonymize = useCallback(async (on: boolean) => {
-    setAnonymize(on);
     if (on && allNames.length === 0) {
+      setAnonymizeLoading(true);
       const names: string[] = await invoke("collect_all_names");
       setAllNames(names);
+      setAnonymize(true);
+      setAnonymizeLoading(false);
+    } else {
+      setAnonymize(on);
     }
   }, [allNames]);
 
@@ -1104,7 +1121,8 @@ function App() {
               </div>
               <div className="flex items-center gap-3">
                 <Toggle label="行結合" checked={mergeCont} onChange={setMergeCont} theme={theme} />
-                <Toggle label="匿名" checked={anonymize} onChange={handleToggleAnonymize} theme={theme} />
+                <Toggle label="匿名(不完全)" checked={anonymize || anonymizeLoading} onChange={handleToggleAnonymize} theme={theme} />
+                {anonymizeLoading && <span className="spinner" style={{ color: theme.accent }} />}
                 <Toggle label="スクロール同期" checked={syncScroll} onChange={setSyncScroll} theme={theme} />
               </div>
             </div>
@@ -1215,7 +1233,7 @@ function App() {
           onClick={(e) => { if (e.target === e.currentTarget) setShowAbout(false); }}
         >
           <div
-            className="rounded-lg shadow-2xl w-[360px] flex flex-col"
+            className="rounded-lg shadow-2xl w-[420px] flex flex-col"
             style={{ backgroundColor: theme.bgSecondary, color: theme.text, border: `1px solid ${theme.border}` }}
           >
             <div
@@ -1231,10 +1249,11 @@ function App() {
                 ×
               </button>
             </div>
-            <div className="px-6 py-6 text-center">
-              <p className="text-lg font-bold mb-2">SG grep</p>
+            <div className="px-6 py-4 text-center">
+              <img src="/splash.png" alt="SG grep" width={320} height={213} draggable={false} className="mx-auto mb-3" />
+              <p className="text-lg font-bold mb-1">SG grep</p>
               <p className="text-xs mb-1" style={{ color: theme.textMuted }}>Version {appVersion}</p>
-              <p className="text-xs mt-3" style={{ color: theme.textDimmed }}>STRUGARDEN チャットログビューア</p>
+              <p className="text-xs mt-2" style={{ color: theme.textDimmed }}>STRUGARDEN チャットログビューア</p>
             </div>
             <div
               className="flex justify-center px-4 py-3"

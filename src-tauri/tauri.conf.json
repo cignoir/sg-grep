@@ -12,11 +12,23 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "SG grep",
         "width": 1400,
         "height": 800,
         "decorations": false,
         "visible": false
+      },
+      {
+        "label": "splash",
+        "title": "SG grep",
+        "url": "/splash.html",
+        "width": 480,
+        "height": 320,
+        "decorations": false,
+        "resizable": false,
+        "center": true,
+        "alwaysOnTop": true
       }
     ],
     "security": {
