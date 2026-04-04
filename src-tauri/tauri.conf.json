@@ -15,7 +15,8 @@
         "title": "SG grep",
         "width": 1400,
         "height": 800,
-        "decorations": false
+        "decorations": false,
+        "visible": false
       }
     ],
     "security": {

@@ -806,7 +806,7 @@ function App() {
       rawEl.removeEventListener("scroll", onRawScroll);
       fmtEl.removeEventListener("scroll", onFmtScroll);
     };
-  }, [syncScroll]);
+  }, [syncScroll, selectedFile]);
 
   // Load config
   useEffect(() => {
@@ -816,6 +816,8 @@ function App() {
         setThemeOverrides(config.theme as Partial<ThemeConfig>);
       }
       setConfigLoaded(true);
+      // Show window after UI is ready
+      getCurrentWindow().show();
       if (config.last_directory) {
         loadDirectory(config.last_directory);
       }
@@ -880,9 +882,7 @@ function App() {
       setDirectory(dir);
       directoryRef.current = dir;
       setFolders(groups);
-      // Collect all speaker names across all files for anonymization
-      const names: string[] = await invoke("collect_all_names");
-      setAllNames(names);
+      setAllNames([]); // Reset; will be fetched when anonymize is toggled on
       const config: AppConfig = await invoke("load_config");
       await invoke("save_config", { config: { ...config, last_directory: dir } });
     } catch (e) {
@@ -971,6 +971,14 @@ function App() {
       return next;
     });
   }, []);
+
+  const handleToggleAnonymize = useCallback(async (on: boolean) => {
+    setAnonymize(on);
+    if (on && allNames.length === 0) {
+      const names: string[] = await invoke("collect_all_names");
+      setAllNames(names);
+    }
+  }, [allNames]);
 
   const handleSettingsApply = async (dir: string | null, overrides: Partial<ThemeConfig>) => {
     setThemeOverrides(overrides);
@@ -1096,7 +1104,7 @@ function App() {
               </div>
               <div className="flex items-center gap-3">
                 <Toggle label="行結合" checked={mergeCont} onChange={setMergeCont} theme={theme} />
-                <Toggle label="匿名" checked={anonymize} onChange={setAnonymize} theme={theme} />
+                <Toggle label="匿名" checked={anonymize} onChange={handleToggleAnonymize} theme={theme} />
                 <Toggle label="スクロール同期" checked={syncScroll} onChange={setSyncScroll} theme={theme} />
               </div>
             </div>
