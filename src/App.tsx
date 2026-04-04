@@ -478,7 +478,14 @@ function MenuBar({
   onOpenSettings,
   onToggleSidebar,
   onShowAbout,
+  onExit,
   sidebarVisible,
+  mergeCont,
+  onToggleMergeCont,
+  anonymize,
+  onToggleAnonymize,
+  syncScroll,
+  onToggleSyncScroll,
   inputRef,
   onInput,
   isSearching,
@@ -488,7 +495,14 @@ function MenuBar({
   onOpenSettings: () => void;
   onToggleSidebar: () => void;
   onShowAbout: () => void;
+  onExit: () => void;
   sidebarVisible: boolean;
+  mergeCont: boolean;
+  onToggleMergeCont: () => void;
+  anonymize: boolean;
+  onToggleAnonymize: () => void;
+  syncScroll: boolean;
+  onToggleSyncScroll: () => void;
   inputRef: React.RefObject<HTMLInputElement | null>;
   onInput: () => void;
   isSearching: boolean;
@@ -515,18 +529,19 @@ function MenuBar({
       label: "ファイル",
       items: [
         { label: "フォルダを開く", onClick: () => { close(); onOpenFolder(); }, shortcut: "Ctrl+O" },
-        { label: "", onClick: () => {}, separator: true },
         { label: "設定", onClick: () => { close(); onOpenSettings(); }, shortcut: "Ctrl+," },
+        { label: "", onClick: () => {}, separator: true },
+        { label: "終了", onClick: () => { close(); onExit(); } },
       ],
     },
     {
       label: "表示",
       items: [
-        {
-          label: `${sidebarVisible ? "✓ " : ""}サイドバー`,
-          onClick: () => { close(); onToggleSidebar(); },
-          shortcut: "Ctrl+B",
-        },
+        { label: `${sidebarVisible ? "✓ " : "　"}サイドバー`, onClick: () => { close(); onToggleSidebar(); }, shortcut: "Ctrl+B" },
+        { label: "", onClick: () => {}, separator: true },
+        { label: `${mergeCont ? "✓ " : "　"}行結合`, onClick: () => { close(); onToggleMergeCont(); } },
+        { label: `${anonymize ? "✓ " : "　"}匿名(不完全)`, onClick: () => { close(); onToggleAnonymize(); } },
+        { label: `${syncScroll ? "✓ " : "　"}スクロール同期`, onClick: () => { close(); onToggleSyncScroll(); } },
       ],
     },
     {
@@ -1031,8 +1046,15 @@ function App() {
         onOpenFolder={handlePickFolder}
         onOpenSettings={() => setShowSettings(true)}
         onShowAbout={() => setShowAbout(true)}
+        onExit={() => getCurrentWindow().close()}
         onToggleSidebar={() => setSidebarVisible((v) => !v)}
         sidebarVisible={sidebarVisible}
+        mergeCont={mergeCont}
+        onToggleMergeCont={() => setMergeCont((v) => !v)}
+        anonymize={anonymize}
+        onToggleAnonymize={() => handleToggleAnonymize(!anonymize)}
+        syncScroll={syncScroll}
+        onToggleSyncScroll={() => setSyncScroll((v) => !v)}
         inputRef={inputRef}
         onInput={handleInput}
         isSearching={isSearching}
