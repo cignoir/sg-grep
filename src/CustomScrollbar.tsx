@@ -35,6 +35,7 @@ export default function CustomScrollbar({ scrollRef }: Props) {
     setThumbState({ top: thumbTop, height: thumbHeight, visible: true });
   }, [scrollRef]);
 
+  // Sync with external system: DOM scroll events and ResizeObserver on the scroll container
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;

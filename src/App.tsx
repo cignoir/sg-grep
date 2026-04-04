@@ -4,6 +4,7 @@ import {
   useRef,
   useCallback,
   useMemo,
+  useImperativeHandle,
   memo,
   startTransition,
 } from "react";
@@ -34,18 +35,24 @@ import { version as appVersion } from "../package.json";
 
 const SELECTION_BG = "rgba(137, 180, 250, 0.3)";
 
+export interface LogPaneHandle {
+  scrollToLine: (index: number) => void;
+}
+
 const LogPane = memo(function LogPane({
   lines,
   activeQuery,
   highlightLine,
   parentRef,
   theme,
+  ref,
 }: {
   lines: string[];
   activeQuery: string;
   highlightLine: number | null;
   parentRef: React.RefObject<HTMLDivElement | null>;
   theme: ThemeConfig;
+  ref?: React.Ref<LogPaneHandle>;
 }) {
   const virtualizer = useVirtualizer({
     count: lines.length,
@@ -54,11 +61,12 @@ const LogPane = memo(function LogPane({
     overscan: 30,
   });
 
-  useEffect(() => {
-    if (highlightLine !== null) {
-      virtualizer.scrollToIndex(highlightLine, { align: "center" });
-    }
-  }, [highlightLine, virtualizer]);
+  // Expose scrollToLine for imperative scrolling from event handlers
+  useImperativeHandle(ref, () => ({
+    scrollToLine: (index: number) => {
+      virtualizer.scrollToIndex(index, { align: "center" });
+    },
+  }), [virtualizer]);
 
   const regex = useMemo(() => {
     if (!activeQuery.trim()) return null;
@@ -123,6 +131,7 @@ const LogPane = memo(function LogPane({
     setSelEnd(idx);
   }, [lines.length, parentRef]);
 
+  // Sync with external system: window mousemove/mouseup events for drag selection
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDragging.current) return;
@@ -509,15 +518,17 @@ function MenuBar({
 }) {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [isMaximized, setIsMaximized] = useState(false);
-  const appWindow = getCurrentWindow();
+  const appWindowRef = useRef(getCurrentWindow());
 
+  // Sync with external system: Tauri window resize events to track maximized state
   useEffect(() => {
+    const appWindow = appWindowRef.current;
     appWindow.isMaximized().then(setIsMaximized);
     const unlisten = appWindow.onResized(() => {
       appWindow.isMaximized().then(setIsMaximized);
     });
     return () => { unlisten.then((fn) => fn()); };
-  }, [appWindow]);
+  }, []);
 
   const close = () => setOpenMenu(null);
 
@@ -611,10 +622,10 @@ function MenuBar({
         className="flex-1 h-full flex items-center justify-center px-4"
         onMouseDown={(e) => {
           // Only start dragging if clicking the bar itself, not the input
-          if (e.target === e.currentTarget) appWindow.startDragging();
+          if (e.target === e.currentTarget) appWindowRef.current.startDragging();
         }}
         onDoubleClick={(e) => {
-          if (e.target === e.currentTarget) appWindow.toggleMaximize();
+          if (e.target === e.currentTarget) appWindowRef.current.toggleMaximize();
         }}
       >
         <div className="relative w-full max-w-xl">
@@ -644,7 +655,7 @@ function MenuBar({
         <button
           className="w-12 h-full flex items-center justify-center hover:opacity-70 transition-colors"
           style={{ color: theme.textMuted }}
-          onClick={() => appWindow.minimize()}
+          onClick={() => appWindowRef.current.minimize()}
           title="最小化"
         >
           <svg width="10" height="1" viewBox="0 0 10 1"><rect width="10" height="1" fill="currentColor" /></svg>
@@ -652,7 +663,7 @@ function MenuBar({
         <button
           className="w-12 h-full flex items-center justify-center hover:opacity-70 transition-colors"
           style={{ color: theme.textMuted }}
-          onClick={() => appWindow.toggleMaximize()}
+          onClick={() => appWindowRef.current.toggleMaximize()}
           title={isMaximized ? "元に戻す" : "最大化"}
         >
           {isMaximized ? (
@@ -669,7 +680,7 @@ function MenuBar({
         </button>
         <button
           className="h-full flex items-center justify-center transition-opacity hover:opacity-70 px-2"
-          onClick={() => appWindow.close()}
+          onClick={() => appWindowRef.current.close()}
           title="閉じる"
         >
           <img src="/close-btn.png" alt="閉じる" width={16} height={16} draggable={false} />
@@ -763,7 +774,8 @@ function App() {
   const inputRef = useRef<HTMLInputElement>(null);
   const directoryRef = useRef<string | null>(null);
   const isSyncing = useRef(false);
-  const selectHitRef = useRef<((path: string, line: number) => void) | null>(null);
+  const rawLogPaneRef = useRef<LogPaneHandle>(null);
+  const formattedLogPaneRef = useRef<LogPaneHandle>(null);
 
   const theme = useMemo(() => resolveTheme(themeOverrides), [themeOverrides]);
 
@@ -796,7 +808,7 @@ function App() {
     return formattedLines.filter((l) => matchesQuery(l.toLowerCase(), filterParsed));
   }, [formattedLines, filterParsed]);
 
-  // Scroll sync
+  // Sync with external system: DOM scroll events for dual-pane scroll synchronization
   useEffect(() => {
     if (!syncScroll) return;
     const rawEl = rawScrollRef.current;
@@ -825,7 +837,7 @@ function App() {
     };
   }, [syncScroll, selectedFile]);
 
-  // Load config
+  // Sync with external system: Tauri IPC — load persisted config from disk on mount
   useEffect(() => {
     (async () => {
       const config: AppConfig = await invoke("load_config");
@@ -839,6 +851,7 @@ function App() {
         closeSplashAndShowMain();
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Flat list of all search hits for arrow key navigation
@@ -852,9 +865,20 @@ function App() {
     return hits;
   }, [searchResults]);
 
-  // Keyboard shortcuts
+  // Ref holding latest handler values — updated during render, no useEffect needed.
+  // Initialized with null!, assigned after handlePickFolder/handleSelectHit are defined below.
+  const keyboardStateRef = useRef<{
+    allHits: typeof allHits;
+    selectedHitKey: string | null;
+    handlePickFolder: () => void;
+    handleSelectHit: (path: string, lineNumber: number) => void;
+  }>(null!);
+
+  // Sync with external system: window keydown events for global keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      const { allHits, selectedHitKey, handlePickFolder, handleSelectHit } = keyboardStateRef.current;
+
       if (e.ctrlKey && e.key === "o") { e.preventDefault(); handlePickFolder(); }
       if (e.ctrlKey && e.key === ",") { e.preventDefault(); setShowSettings(true); }
       if (e.ctrlKey && e.key === "b") { e.preventDefault(); setSidebarVisible((v) => !v); }
@@ -865,9 +889,7 @@ function App() {
         const isArrow = e.key === "ArrowUp" || e.key === "ArrowDown";
         const isEnter = e.key === "Enter";
 
-        // ↑↓: always work from search box, elsewhere only if not in an input
         const arrowOk = isArrow && (isSearchBox || !(e.target as HTMLElement).matches("input, textarea"));
-        // Enter: only from search box
         const enterOk = isEnter && isSearchBox;
 
         if (arrowOk || enterOk) {
@@ -885,13 +907,13 @@ function App() {
           }
 
           const hit = allHits[nextIdx];
-          selectHitRef.current?.(hit.path, hit.lineNumber);
+          handleSelectHit(hit.path, hit.lineNumber);
         }
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [allHits, selectedHitKey]);
+  }, []);
 
   const closeSplashAndShowMain = () => {
     getCurrentWindow().show();
@@ -938,7 +960,7 @@ function App() {
         // Auto-select first hit
         if (results.length > 0 && results[0].hits.length > 0) {
           const first = results[0];
-          setTimeout(() => selectHitRef.current?.(first.path, first.hits[0].line_number), 50);
+          setTimeout(() => keyboardStateRef.current.handleSelectHit(first.path, first.hits[0].line_number), 50);
         }
       } catch (e) { console.error(e); setIsSearching(false); }
     }, 300);
@@ -975,21 +997,28 @@ function App() {
           const content: string = await invoke("read_file", { path });
           const newLines = content.split("\n");
           setLines(newLines);
+          // Wait for virtualizer to render new data, then scroll + highlight
           setTimeout(() => {
+            const fmtIdx = computeFormattedLineIndex(lineNumber, newLines);
             setHighlightLine(lineNumber);
-            setHighlightLineFormatted(computeFormattedLineIndex(lineNumber, newLines));
+            setHighlightLineFormatted(fmtIdx);
+            rawLogPaneRef.current?.scrollToLine(lineNumber);
+            formattedLogPaneRef.current?.scrollToLine(fmtIdx);
           }, 100);
         } catch (e) { console.error(e); }
       } else {
+        const fmtIdx = computeFormattedLineIndex(lineNumber, lines);
         setHighlightLine(lineNumber);
-        setHighlightLineFormatted(computeFormattedLineIndex(lineNumber, lines));
+        setHighlightLineFormatted(fmtIdx);
+        rawLogPaneRef.current?.scrollToLine(lineNumber);
+        formattedLogPaneRef.current?.scrollToLine(fmtIdx);
       }
     },
     [selectedFile, lines, computeFormattedLineIndex]
   );
 
-  // Keep ref in sync for keyboard navigation
-  useEffect(() => { selectHitRef.current = handleSelectHit; }, [handleSelectHit]);
+  // Keep keyboard ref in sync with latest handlers (render-phase assignment, not an effect)
+  keyboardStateRef.current = { allHits, selectedHitKey, handlePickFolder, handleSelectHit };
 
   const toggleFolder = useCallback((folder: string) => {
     setCollapsedFolders((prev) => {
@@ -1172,6 +1201,7 @@ function App() {
                 <div ref={rawScrollRef} className="log-pane absolute inset-0 overflow-auto p-2 pr-[18px] font-mono text-sm">
                   {selectedFile ? (
                     <LogPane
+                      ref={rawLogPaneRef}
                       lines={filteredRawLines}
                       activeQuery={filterText || activeQuery}
                       highlightLine={filterText ? null : highlightLine}
@@ -1208,6 +1238,7 @@ function App() {
                 <div ref={formattedScrollRef} className="log-pane absolute inset-0 overflow-auto p-2 pr-[18px] font-mono text-sm">
                   {selectedFile ? (
                     <LogPane
+                      ref={formattedLogPaneRef}
                       lines={filteredFormattedLines}
                       activeQuery={filterText || activeQuery}
                       highlightLine={filterText ? null : highlightLineFormatted}
